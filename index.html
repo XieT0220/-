@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>专属惊喜礼物 · 满屏弹幕与烟花</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Microsoft YaHei', sans-serif; }
+        body { background-color: #87CEEB; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; position: relative; transition: background-color 2s ease; }
+
+        /* ===== 页面容器 ===== */
+        .page { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100vh; position: absolute; top: 0; left: 0; z-index: 10; }
+        .page.active { display: flex; }
+
+        /* ===== 第 0 页：信封与打字机特效 ===== */
+        #page0 { background-color: #87CEEB; } 
+        .envelope { width: 90%; max-width: 600px; height: 60vh; background: #fff; border-radius: 10px; box-shadow: 0 15px 35px rgba(0,0,0,0.1), inset 0 0 10px rgba(0,0,0,0.05); padding: 40px 30px; position: relative; z-index: 2; overflow: hidden; border: 1px solid #e0e0e0; }
+        .envelope::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom right, rgba(255,255,255,0) 45%, rgba(0,0,0,0.03) 50%, rgba(255,255,255,0) 55%); pointer-events: none; }
+        .letter-text { font-size: 22px; color: #333; line-height: 2; letter-spacing: 2px; font-weight: bold; position: relative; z-index: 3; }
+        .letter-text div { opacity: 0; transition: opacity 1s; }
+
+        /* ===== 真实感弹窗 ===== */
+        .modal-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: #fff; width: 340px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.05); overflow: hidden; transform: scale(0.9); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; }
+        .modal-overlay.active .modal-box { transform: scale(1); }
+        .modal-title { background: #f9f9f9; padding: 12px 16px; font-size: 14px; font-weight: bold; color: #333; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
+        .modal-close { cursor: pointer; color: #999; font-size: 18px; line-height: 1; transition: color 0.2s; }
+        .modal-close:hover { color: #f44336; }
+        .modal-content { padding: 30px 20px; text-align: center; font-size: 16px; color: #333; line-height: 1.6; flex-grow: 1; word-break: break-all; }
+        .modal-btns { display: flex; justify-content: flex-end; gap: 10px; padding: 15px 20px; background: #f9f9f9; border-top: 1px solid #eee; }
+        .modal-btn { padding: 8px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; color: #333; background-color: #fff; border: 1px solid #ccc; transition: all 0.2s; }
+        .modal-btn:hover { background-color: #f0f0f0; }
+        .modal-btn.primary { background-color: #0078D7; color: #fff; border-color: #0078D7; }
+        .modal-btn.primary:hover { background-color: #005A9E; }
+
+        /* ===== 天气特效层 ===== */
+        #weather-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; overflow: hidden; display: none; }
+        
+        .cloud { position: absolute; width: 160px; height: 70px; background: radial-gradient(circle at 50% 100%, #555, #1a1a1a); border-radius: 50px; opacity: 0; transition: transform 3s ease-out, opacity 2s; box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset -10px -10px 20px rgba(0,0,0,0.6); }
+        .cloud::before, .cloud::after { content: ''; position: absolute; background: inherit; border-radius: 50%; }
+        .cloud::before { width: 90px; height: 90px; top: -45px; left: 15px; box-shadow: inset -10px -10px 20px rgba(0,0,0,0.5); }
+        .cloud::after { width: 70px; height: 70px; top: -35px; right: 15px; box-shadow: inset -10px -10px 20px rgba(0,0,0,0.5); }
+        
+        .rain-drop { position: absolute; width: 1.5px; height: 30px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(200,230,255,0.8)); animation: rain-fall 0.4s linear infinite; opacity: 0; }
+        @keyframes rain-fall { 0% { transform: translateY(-100px); } 100% { transform: translateY(100vh); } }
+
+        .sun { position: absolute; width: 50px; height: 50px; background: radial-gradient(circle at 30% 30%, #fff, #FFD700 60%, #FF8C00); border-radius: 50%; box-shadow: 0 0 30px 10px rgba(255, 215, 0, 0.8); opacity: 0; transition: opacity 2s; }
+        .sun::before { content: ''; position: absolute; top: -15px; left: -15px; right: -15px; bottom: -15px; background: radial-gradient(circle, rgba(255,215,0,0.3) 0%, transparent 70%); animation: pulse 1.5s infinite alternate; }
+        @keyframes pulse { 0% { transform: scale(0.9); opacity: 0.5; } 100% { transform: scale(1.3); opacity: 1; } }
+
+        #water-overlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: rgba(26, 42, 58, 0.8); z-index: 15; transition: height 3s ease-in-out; pointer-events: none; }
+
+        .tear-word { position: absolute; top: -50px; color: #87CEEB; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px rgba(255,255,255,0.5); z-index: 18; opacity: 0; transition: top 2s linear, opacity 1s; }
+        .tear-stopped { animation: wobble 1s infinite alternate ease-in-out; }
+        @keyframes wobble { 0% { transform: rotate(-15deg) translateY(0); } 50% { transform: rotate(15deg) translateY(5px); } 100% { transform: rotate(-10deg) translateY(-5px); } }
+
+        /* ===== 礼物盒与输入页 ===== */
+        .gift-box { position: relative; width: 160px; height: 160px; cursor: pointer; animation: bounce 1.2s infinite alternate; margin-bottom: 30px; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.2)); }
+        @keyframes bounce { 0% { transform: translateY(0); } 100% { transform: translateY(-15px); } }
+        .gift-box-body { position: absolute; bottom: 0; left: 10px; width: 140px; height: 100px; background: linear-gradient(135deg, #ff5e62, #ff9966); border-radius: 8px; }
+        .gift-box-lid { position: absolute; top: 30px; left: 0; width: 160px; height: 40px; background: linear-gradient(135deg, #ff758c, #ff7eb3); border-radius: 6px; z-index: 2; }
+        .gift-box-ribbon-v { position: absolute; top: 30px; left: 60px; width: 40px; height: 130px; background: #FFD700; z-index: 3; }
+        .gift-box-ribbon-h { position: absolute; top: 45px; left: 10px; width: 140px; height: 20px; background: #FFD700; z-index: 3; }
+        .gift-box-bow-left { position: absolute; top: 0; left: 40px; width: 40px; height: 35px; background: #FFD700; border-radius: 50% 50% 0 50%; transform: rotate(-20deg); z-index: 4; }
+        .gift-box-bow-right { position: absolute; top: 0; left: 80px; width: 40px; height: 35px; background: #FFD700; border-radius: 50% 50% 50% 0; transform: rotate(20deg); z-index: 4; }
+        .gift-box-bow-center { position: absolute; top: 12px; left: 70px; width: 20px; height: 20px; background: #FFC125; border-radius: 50%; z-index: 5; }
+        .gift-box-star { position: absolute; color: #fff; font-size: 20px; animation: twinkle 1s infinite alternate; z-index: 6; }
+        .star1 { top: -10px; left: -10px; font-size: 24px; color: #FFD700; }
+        .star2 { top: 20px; right: -15px; animation-delay: 0.5s; }
+        @keyframes twinkle { 0% { opacity: 0.3; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
+        
+        .hint { font-size: 24px; color: #fff; font-weight: bold; text-shadow: 1px 1px 3px rgba(0,0,0,0.3); }
+        .input-title { font-size: 28px; color: #ff3366; margin-bottom: 20px; font-weight: bold; text-align: center; }
+        input[type="text"] { padding: 15px; font-size: 20px; border: 3px solid #ff99cc; border-radius: 10px; outline: none; text-align: center; width: 80%; max-width: 400px; margin-bottom: 20px; }
+        button.main-btn { padding: 12px 30px; font-size: 20px; background-color: #ff6699; color: white; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; }
+
+        /* ===== 第三页：表情包、弹幕与卷轴 ===== */
+        #page3 { background-color: #ffffff !important; }
+        .meme-container { width: 100%; max-width: 600px; position: relative; z-index: 10; text-align: center; }
+        .meme-img { width: 100%; border-radius: 15px; display: block; }
+        .text-overlay { position: absolute; display: flex; align-items: center; justify-content: center; color: #000; font-weight: 900; font-size: 32px; white-space: nowrap; text-shadow: -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff; }
+        .top-text { top: 8%; left: 50%; transform: translateX(-50%); }
+        .bottom-left-text { top: 63%; left: 10%; }
+        @media (max-width: 768px) {
+            .top-text, .bottom-left-text { font-size: 22px; }
+            .top-text { top: 2.5%; left: 2%; }
+            .bottom-left-text { top: 61%; left: 4%; }
+        }
+
+        /* ===== 弹幕容器：铺满全屏、高密度 ===== */
+        #danmaku-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 3;
+        }
+        .danmaku-item {
+            position: absolute;
+            white-space: nowrap;
+            font-size: 24px;
+            font-weight: 900;
+            text-shadow: 1.5px 1.5px 0 #fff, -1.5px -1.5px 0 #fff;
+            animation: danmaku-move linear forwards;
+            will-change: transform;
+            left: 0;
+        }
+        @keyframes danmaku-move {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(110vw); }
+        }
+
+        /* ===== 烟花画布（在 page3 内部，位于弹幕之下、白底之上） ===== */
+        #fireworksCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ===== 掉落的书信卷轴 ===== */
+        #scroll-container { position: absolute; top: -200px; left: 50%; transform: translateX(-50%); z-index: 50; cursor: pointer; transition: top 1s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: none; }
+        .scroll-roll { width: 260px; height: 60px; background: linear-gradient(to bottom, #d4af37, #f3e5ab, #d4af37); border-radius: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: flex; justify-content: center; align-items: center; color: #5c4a1b; font-weight: bold; font-size: 16px; letter-spacing: 2px; position: relative; animation: float 2s infinite alternate; }
+        @keyframes float { 0% { transform: translateY(0); } 100% { transform: translateY(-10px); } }
+        .letter-paper { position: absolute; top: 50px; left: 50%; transform: translateX(-50%) scaleY(0); transform-origin: top; width: 340px; max-width: 90vw; background: rgba(255, 253, 245, 0.9); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); border-radius: 10px; padding: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.05); border: 1px solid rgba(255, 255, 255, 0.6); transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s; opacity: 0; pointer-events: none; }
+        .letter-paper h3 { text-align: center; color: #8b5a2b; margin-bottom: 15px; font-size: 18px; letter-spacing: 1px; }
+        .letter-paper p { font-size: 15px; color: #333; line-height: 1.8; text-align: justify; font-weight: bold; font-family: 'KaiTi', '楷体', 'Microsoft YaHei', sans-serif; text-indent: 2em; margin-bottom: 10px; }
+        #scroll-container.opened { top: 15%; }
+        #scroll-container.opened .scroll-roll { animation: none; opacity: 0.7; transition: opacity 0.3s; }
+        #scroll-container.opened .letter-paper { transform: translateX(-50%) scaleY(1); opacity: 1; pointer-events: auto; }
+    </style>
+</head>
+<body>
+
+    <!-- 天气特效层 -->
+    <div id="weather-layer">
+        <div id="rain-container" style="position: absolute; width: 100%; height: 100%;"></div>
+    </div>
+    <!-- 水淹屏幕特效层 -->
+    <div id="water-overlay"></div>
+
+    <!-- 第 0 页：信封开场 -->
+    <div id="page0" class="page active">
+        <div class="envelope">
+            <div class="letter-text" id="typewriter">
+                <div>进入页面的屏幕前的你，</div>
+                <div>恭喜你成为许愿瓶众多好友之一~</div>
+                <div>一份小小的略带抽象的礼物即将出现！</div>
+                <div>你准备好接收了吗！请狠狠点出你的选项！</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第一页：礼物盒 -->
+    <div id="page1" class="page">
+        <div class="gift-box" onclick="showPage2()">
+            <div class="gift-box-body"></div>
+            <div class="gift-box-ribbon-v"></div>
+            <div class="gift-box-ribbon-h"></div>
+            <div class="gift-box-lid"></div>
+            <div class="gift-box-bow-left"></div>
+            <div class="gift-box-bow-right"></div>
+            <div class="gift-box-bow-center"></div>
+            <div class="gift-box-star star1">✨</div>
+            <div class="gift-box-star star2">✨</div>
+        </div>
+        <div class="hint">点击礼物盒打开惊喜</div>
+    </div>
+
+    <!-- 第二页：输入名称 -->
+    <div id="page2" class="page">
+        <div class="input-title">请输入收礼人你的昵称哇~</div>
+        <input type="text" id="nameInput" placeholder="输入名字 (字数不宜过多)" maxlength="20">
+        <button class="main-btn" onclick="confirmName()">确认收下 🎉</button>
+    </div>
+
+    <!-- 第三页：表情包、弹幕、烟花与卷轴 -->
+    <div id="page3" class="page">  
+        <!-- 烟花画布放在最底层（z-index:0），在白底之上 -->
+        <canvas id="fireworksCanvas"></canvas>
+        <!-- 弹幕容器（z-index:3） -->
+        <div id="danmaku-container"></div>
+        <!-- 掉落的书信卷轴（z-index:50） -->
+        <div id="scroll-container" onclick="openLetter(this)">
+            <div class="scroll-roll">📜 点击展开信件</div>
+            <div class="letter-paper" onclick="event.stopPropagation()"> 
+                <h3>💌 致我亲爱的朋友</h3>
+                <p>很高兴能与你认识，能成为你众多朋友之一是我没有想到的，这是我的荣幸。</p>
+                <p>在茫茫人海中擦肩而过已是有缘，我们拥有联系方式更是缘上加缘 ⚪∞。</p>
+                <p>希望这份小礼物是你生活秩序外的一抹惊喜，若你能因此开心，它便有了存在的意义。</p>
+                <p style="text-align: right; margin-top: 15px;">我爱你，我的朋友。</p>
+            </div>
+        </div>
+        <!-- 表情包（z-index:10） -->
+        <div class="meme-container">
+            <img src="meme.png" onerror="this.src='https://i.ibb.co/6P0wX9Z/image.png'" class="meme-img">
+            <div class="text-overlay top-text" id="topText"></div>
+            <div class="text-overlay bottom-left-text" id="bottomLeftText"></div>
+        </div>
+    </div>
+
+    <!-- 自定义弹窗组件 -->
+    <div id="custom-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title">是否确认 <span class="modal-close">✖</span></div>
+            <div class="modal-content" id="modal-msg">准备好了！</div>
+            <div class="modal-btns" id="modal-btns"></div>
+        </div>
+    </div>
+
+    <script>
+        // ===== 第 0 页：打字机效果 =====
+        window.onload = function() {
+            const textContainer = document.getElementById('typewriter');
+            const lines = textContainer.querySelectorAll('div');
+            let lineIndex = 0;
+
+            function showNextLine() {
+                if (lineIndex < lines.length) {
+                    lines[lineIndex].style.opacity = 1;
+                    lineIndex++;
+                    setTimeout(showNextLine, 1000);
+                } else {
+                    setTimeout(() => {
+                        showModal('是否确认', '准备好了！', '没准备好', 
+                            () => { startGiftFlow(); },
+                            () => { showSecondModal(); }
+                        );
+                    }, 1500);
+                }
+            }
+            setTimeout(showNextLine, 500); 
+        };
+
+        // 显示弹窗通用函数
+        function showModal(title, btn1Text, btn2Text, btn1Action, btn2Action) {
+            const modal = document.getElementById('custom-modal');
+            const btnsContainer = document.getElementById('modal-btns');
+            const msg = document.getElementById('modal-msg');
+            
+            msg.innerText = title;
+            btnsContainer.innerHTML = ''; 
+
+            if (btn1Text) {
+                const b1 = document.createElement('button');
+                b1.className = 'modal-btn primary';
+                b1.innerText = btn1Text;
+                b1.onclick = () => { modal.classList.remove('active'); if(btn1Action) btn1Action(); };
+                btnsContainer.appendChild(b1);
+            }
+            if (btn2Text) {
+                const b2 = document.createElement('button');
+                b2.className = 'modal-btn';
+                b2.innerText = btn2Text;
+                b2.onclick = () => { modal.classList.remove('active'); if(btn2Action) btn2Action(); };
+                btnsContainer.appendChild(b2);
+            }
+            document.querySelector('.modal-close').onclick = () => {
+                modal.classList.remove('active');
+                if(btn2Action) btn2Action();
+            };
+            modal.classList.add('active');
+        }
+
+        // 分支逻辑
+        function showSecondModal() {
+            showModal('你真的没有准备好嘛【哭泣】', '真的', '假的', 
+                () => { triggerRainAndSuns(); }, 
+                () => { startGiftFlow(); }       
+            );
+        }
+
+        function showThirdModal() {
+            showModal('我要哭了【警告ing】', '准备好了', '没准备好', 
+                () => { startGiftFlow(); },      
+                () => { triggerRainAndSuns(); }  
+            );
+        }
+
+        // ===== 终极天气与水淹特效 =====
+        function triggerRainAndSuns() {
+            const weatherLayer = document.getElementById('weather-layer');
+            const rainContainer = document.getElementById('rain-container');
+            const waterOverlay = document.getElementById('water-overlay');
+            const body = document.body;
+            
+            weatherLayer.style.display = 'block';
+            waterOverlay.style.height = '0%'; 
+            waterOverlay.style.backgroundColor = 'rgba(26, 42, 58, 0.8)'; 
+            
+            // 1. 飘来乌云 (一排3朵)
+            const clouds = [];
+            for(let i=0; i<3; i++) {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                cloud.style.left = `-200px`; 
+                cloud.style.top = `-20px`;
+                weatherLayer.appendChild(cloud);
+                clouds.push(cloud);
+                setTimeout(() => { 
+                    cloud.style.opacity = '1';
+                    cloud.style.transform = `translateX(calc(50vw - 150px + ${i * 150}px))`; 
+                }, 100);
+            }
+
+            // 2. 乌云就位后开始下雨 (1.5秒后)
+            setTimeout(() => {
+                body.style.backgroundColor = '#1a2a3a';
+                
+                for(let i=0; i<150; i++) {
+                    const drop = document.createElement('div');
+                    drop.className = 'rain-drop';
+                    drop.style.left = `${Math.random() * 100}%`;
+                    drop.style.animationDuration = `${0.2 + Math.random()*0.3}s`;
+                    drop.style.animationDelay = `${Math.random() * 1}s`;
+                    rainContainer.appendChild(drop);
+                    setTimeout(() => drop.style.opacity = 1, 100);
+                }
+
+                for(let i=0; i<15; i++) {
+                    const tear = document.createElement('div');
+                    tear.className = 'tear-word';
+                    tear.innerText = '泪';
+                    tear.style.left = `${5 + Math.random() * 90}%`;
+                    setTimeout(() => {
+                        tear.style.opacity = '1';
+                        tear.style.top = '35vh'; 
+                        weatherLayer.appendChild(tear);
+                        setTimeout(() => {
+                            tear.classList.add('tear-stopped');
+                        }, 1500); 
+                    }, Math.random() * 1000);
+                }
+
+                setTimeout(() => {
+                    waterOverlay.style.height = '100%'; 
+                }, 500);
+                
+                // 3. 下雨持续5秒后，乌云褪去，太阳出现
+                setTimeout(() => {
+                    rainContainer.innerHTML = ''; 
+                    
+                    clouds.forEach(cloud => {
+                        cloud.style.opacity = '0';
+                        cloud.style.transform = 'translateY(-100px) scale(0.8)'; 
+                    });
+
+                    for(let i=0; i<9; i++) {
+                        const sun = document.createElement('div');
+                        sun.className = 'sun';
+                        sun.style.left = `calc(50vw - 280px + ${i * 65}px)`; 
+                        sun.style.top = `8%`;
+                        weatherLayer.appendChild(sun);
+                        setTimeout(() => sun.style.opacity = 1, 100);
+                    }
+                    
+                    body.style.backgroundColor = '#87CEEB';
+
+                    // 4. 太阳出现3秒后，“泪”字慢慢消失
+                    setTimeout(() => {
+                        document.querySelectorAll('.tear-word').forEach(t => {
+                            t.style.opacity = '0';
+                        });
+
+                        // 5. “泪”字消失后，全屏的雨水（水层）慢慢消失
+                        setTimeout(() => {
+                            waterOverlay.style.height = '0%';
+                            
+                            setTimeout(() => {
+                                document.querySelectorAll('.sun').forEach(s => s.remove());
+                                weatherLayer.style.display = 'none';
+                                waterOverlay.style.backgroundColor = 'rgba(26, 42, 58, 0.9)'; 
+                                
+                                showModal('最终确认', '我准备好了!', '我准备非常非常好了！', 
+                                    () => { startGiftFlow(); }, 
+                                    () => { startGiftFlow(); }
+                                );
+                            }, 3000); 
+                        }, 1000); 
+                    }, 3000); 
+                    
+                }, 5000); 
+            }, 1500); 
+        }
+
+        // ===== 进入礼物正常流程 =====
+        function startGiftFlow() {
+            document.getElementById('page0').style.display = 'none';
+            document.getElementById('weather-layer').style.display = 'none';
+            document.getElementById('water-overlay').style.height = '0%'; 
+            document.querySelectorAll('.tear-word').forEach(t => t.remove()); 
+            document.body.style.backgroundColor = '#87CEEB';
+            document.getElementById('page1').classList.add('active');
+        }
+
+        function showPage2() {
+            document.getElementById('page1').classList.remove('active');
+            document.getElementById('page2').classList.add('active');
+        }
+
+        function confirmName() {
+            const input = document.getElementById('nameInput');
+            let name = input.value.trim();
+            if (name === "") name = "小笨蛋"; 
+
+            document.getElementById('topText').innerText = `${name}！！不可以吃粑粑！！`;
+            document.getElementById('bottomLeftText').innerText = name;
+
+            document.getElementById('page2').classList.remove('active');
+            document.getElementById('page3').classList.add('active');
+
+            // 启动烟花和满屏弹幕
+            startFireworks();
+            startDanmaku();
+            
+            // 弹幕飘 5 秒后，书信卷轴掉下来
+            setTimeout(dropScroll, 5000); 
+        }
+
+        // --- 卷轴逻辑 ---
+        function dropScroll() {
+            const scroll = document.getElementById('scroll-container');
+            scroll.style.display = 'block';
+            setTimeout(() => {
+                scroll.style.top = '10%';
+            }, 100);
+        }
+
+        function openLetter(element) {
+            element.classList.toggle('opened');
+        }
+
+        // --- 烟花逻辑 ---
+        const canvas = document.getElementById('fireworksCanvas');
+        const ctx = canvas.getContext('2d');
+        let fireworks = [];
+        let particles = [];
+        let animationFrameId;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function randomColor() {
+            const colors = ['#ff0000', '#ffa500', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff', '#ff1493', '#ffffff'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        class Firework {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height;
+                this.targetY = Math.random() * (canvas.height / 2);
+                this.speed = 3 + Math.random() * 4;
+                this.color = randomColor();
+                this.exploded = false;
+            }
+            update() {
+                this.y -= this.speed;
+                if (this.y <= this.targetY) {
+                    this.exploded = true;
+                    createParticles(this.x, this.y, this.color);
+                }
+            }
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; ctx.fill();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 5 + 1;
+                this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+                this.alpha = 1; this.decay = 0.015 + Math.random() * 0.015; this.gravity = 0.05;
+            }
+            update() {
+                this.vx *= 0.98; this.vy *= 0.98; this.vy += this.gravity;
+                this.x += this.vx; this.y += this.vy; this.alpha -= this.decay;
+            }
+            draw() {
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function createParticles(x, y, color) {
+            const particleCount = 50 + Math.floor(Math.random() * 50);
+            for (let i = 0; i < particleCount; i++) particles.push(new Particle(x, y, color));
+        }
+
+        function animate() {
+            // 用半透明白色填充，制造烟花拖尾效果（由于画布在白底上，看起来是白色渐隐）
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (Math.random() < 0.05) fireworks.push(new Firework());
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                let fw = fireworks[i]; fw.update(); fw.draw();
+                if (fw.exploded) fireworks.splice(i, 1);
+            }
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i]; p.update(); p.draw();
+                if (p.alpha <= 0) particles.splice(i, 1);
+            }
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function startFireworks() {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            fireworks = []; particles = [];
+            // 清空画布（透明）
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            animate();
+        }
+
+        // ================= 满屏弹幕 · 最终稳定版（animationend 驱动） =================
+        let danmakuStarted = false;
+        let supplementTimer = null;
+        const danmakuTexts = [
+            "🎉 恭喜你发现这个惊喜！", "✨祝眉目舒展，顺问冬安", 
+            "💖世界很大，幸福很小，有你的陪伴，幸福刚刚好。", "🚀 烦恼通通退散!", 
+            "🌈祝你生命中有足够多的云翳，来造成一个美丽的黄昏", "🍀愿你一切尽意，百事从欢",
+            "🌟愿你以渺小启程，以伟大结尾", "新的一岁，希望你的烦恼像头发一样——越来越少", 
+            "祝你先于春天，翻过此间铮铮山峦!", "希望所有俗套的祝福语都在你身上灵验",
+            "🎈恭喜你成功续费人生VIP", "有时候会觉得，认识你之后，很多普通日子都变好了一点",
+            "管他几岁，开心万岁!", "✨ 愿你的每一天都闪闪发光~", 
+            "💖 记得每天都要开心哦！", "🌈 你超级无敌可爱！", 
+            "🍀 好运正在向你奔来~", "🌟 你是今天最靓的仔！", 
+            "💪 要好好吃饭哦！", "🥳 每天都要像今天一样快乐！", "🎈 送你一朵小红花~",
+            "🌸 你值得所有美好", "⭐️ 今天也是喜欢你的一天", "🍭 生活甜甜的", 
+            "💫 愿你被世界温柔以待", "🌻 向阳而生", "🦋 你是人间四月天",
+            "🎵 好运来那个好运来", "🍉 夏天快乐", "❄️ 冬天也要暖暖的"
+        ];
+        const danmakuColors = ['#FF3366', '#00BFFF', '#FF9900', '#9933FF', '#00CC66', '#FF0000', '#FF00FF', '#FF5733', '#33FF57', '#3357FF'];
+
+        const TARGET_COUNT = 130;    // 同时在屏弹幕数（30轨道，每轨约4条错开）
+        const TRACK_COUNT = 30;
+        const TRACK_GAP = 3.3;
+        let trackCursor = 0;
+
+        function spawnDanmaku(container) {
+            const item = document.createElement('div');
+            item.className = 'danmaku-item';
+            item.innerText = danmakuTexts[Math.floor(Math.random() * danmakuTexts.length)];
+            item.style.color = danmakuColors[Math.floor(Math.random() * danmakuColors.length)];
+
+            // 轮询分配轨道，绝对均匀
+            const track = trackCursor % TRACK_COUNT;
+            trackCursor++;
+            const topPercent = track * TRACK_GAP + (Math.random() * 1.0 - 0.5);
+            item.style.top = Math.max(0, Math.min(95, topPercent)) + '%';
+
+            // 动画时长：错落有致，避免同时结束
+            const duration = 7 + Math.random() * 6;   // 7~13秒
+            item.style.animationDuration = duration + 's';
+
+            // 【核心】动画结束 = 真的飘出屏幕，此时删除并立即补一条
+            item.addEventListener('animationend', () => {
+                item.remove();
+                // 只要还在 page3 且弹幕系统运行中，就补一条，维持满屏
+                if (danmakuStarted && document.getElementById('page3').classList.contains('active')) {
+                    spawnDanmaku(container);
+                }
+            }, { once: true });
+
+            container.appendChild(item);
+        }
+
+        function startDanmaku() {
+            // 重置
+            if (supplementTimer) { clearInterval(supplementTimer); supplementTimer = null; }
+            const container = document.getElementById('danmaku-container');
+            if (!container) return;
+            container.innerHTML = '';
+            trackCursor = 0;
+            danmakuStarted = true;
+
+            // 1. 瞬间铺满：分批创建到 TARGET_COUNT
+            let created = 0;
+            const fillTimer = setInterval(() => {
+                for (let i = 0; i < 10 && created < TARGET_COUNT; i++) {
+                    spawnDanmaku(container);
+                    created++;
+                }
+                if (created >= TARGET_COUNT) clearInterval(fillTimer);
+            }, 25);
+
+            // 2. 保险机制：每 800ms 检查一次 DOM 里实际弹幕数，低于目标就补足。
+            //    只补不删——删除永远交给 animationend。
+            supplementTimer = setInterval(() => {
+                if (!danmakuStarted || !document.getElementById('page3').classList.contains('active')) return;
+                const realCount = container.children.length;
+                if (realCount < TARGET_COUNT) {
+                    const need = TARGET_COUNT - realCount;
+                    // 一次最多补 15 条，避免卡顿
+                    for (let i = 0; i < Math.min(need, 15); i++) {
+                        spawnDanmaku(container);
+                    }
+                }
+            }, 800);
+        }
+
+        // 可选：离开 page3 时停止弹幕系统（当前流程无返回逻辑，但保留以备后续扩展）
+        function stopDanmaku() {
+            danmakuStarted = false;
+            if (supplementTimer) { clearInterval(supplementTimer); supplementTimer = null; }
+        }
+    </script>
+</body>
+</html>
