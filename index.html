@@ -102,14 +102,23 @@
         }
 
         /* 狗头下方文字的定位 */
+         /* 名字的定位（电脑端） */
         .bottom-left-text { 
-            top: 63%;     /* 距离图片顶部的距离，可根据表情包微调 */
-            left: 10%;    /* 距离图片左侧的距离 */
+            top: 63%;     /* 电脑端不用动 */
+            left: 10%;
             font-size: 32px;
         }
 
         /* ===== 重点修改移动端样式 ===== */
+       /* 手机端专用的修正 */
         @media (max-width: 768px) {
+            .top-text {
+                top: 8%;
+                left: 50%;
+                transform: translateX(-50%) scale(0.65); /* 移动端将文字缩小到 65% */
+                transform-origin: top center;
+                white-space: nowrap;
+            }
             /* 移动端不要用固定px或vw，用相对图片缩放的方法 */
             .top-text {
                 top: 8%; /* 保持这个百分比，如果跑偏请微调 */
@@ -119,10 +128,11 @@
                 white-space: nowrap;
             }
             .bottom-left-text {
-                top: 63%;
-                left: 10%;
-                transform: scale(0.65); /* 左下角文字也缩小 */
-                transform-origin: top left;
+                /* 放弃百分比，直接用绝对像素锁定到狗头上方 */
+                top: 190px;   /* 控制上下，数值越大越靠下 */
+                left: 15px;   /* 控制左右，数值越大越靠右 */
+                transform: none; /* 取消可能干扰位置的缩放 */
+                font-size: 20px; /* 手机端字体固定大小，防止忽大忽小 */
                 white-space: nowrap;
             }
         }
