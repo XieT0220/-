@@ -83,10 +83,25 @@
         .top-text { top: 8%; left: 50%; transform: translateX(-50%); }
         .bottom-left-text { top: 63%; left: 10%; }
         @media (max-width: 768px) {
-            .top-text, .bottom-left-text { font-size: 22px; }
-            .top-text { top: 2.5%; left: 2%; }
-            .bottom-left-text { top: 61%; left: 4%; }
-        }
+    .top-text, .bottom-left-text {
+        font-size: clamp(14px, 5vw, 24px);
+    }
+    .top-text {
+        top: 8%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        white-space: normal;
+    }
+    .bottom-left-text {
+        top: 63%;
+        left: 10%;
+        transform: none;
+        width: 80%;
+        white-space: normal;
+    }
+ }
+
 
         /* ===== 弹幕容器：铺满全屏、高密度 ===== */
         #danmaku-container {
