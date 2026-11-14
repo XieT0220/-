@@ -79,28 +79,53 @@
         #page3 { background-color: #ffffff !important; }
         .meme-container { width: 100%; max-width: 600px; position: relative; z-index: 10; text-align: center; }
         .meme-img { width: 100%; border-radius: 15px; display: block; }
-        .text-overlay { position: absolute; display: flex; align-items: center; justify-content: center; color: #000; font-weight: 900; font-size: 32px; white-space: nowrap; text-shadow: -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff; }
-        .top-text { top: 8%; left: 50%; transform: translateX(-50%); }
-        .bottom-left-text { top: 63%; left: 10%; }
+               .text-overlay { 
+            position: absolute; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: #000; 
+            font-weight: 900; 
+            white-space: nowrap; 
+            text-shadow: -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff; 
+            /* 关键：让文字的缩放锚点以文字自身为中心 */
+            transform-origin: center center; 
+            z-index: 5;
+        }
+
+        /* 狗头上方文字的定位（使用百分比相对于图片宽度定位） */
+        .top-text { 
+            top: 8%;      /* 距离图片顶部的距离，可根据你实际表情包微调，比如改成 5% */
+            left: 50%;    /* 保持在水平中间位置附近 */
+            transform: translateX(-50%); /* 水平居中 */
+            font-size: 32px; /* 电脑端字号 */
+        }
+
+        /* 狗头下方文字的定位 */
+        .bottom-left-text { 
+            top: 63%;     /* 距离图片顶部的距离，可根据表情包微调 */
+            left: 10%;    /* 距离图片左侧的距离 */
+            font-size: 32px;
+        }
+
+        /* ===== 重点修改移动端样式 ===== */
         @media (max-width: 768px) {
-    .top-text, .bottom-left-text {
-        font-size: clamp(14px, 5vw, 24px);
-    }
-    .top-text {
-        top: 8%;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 90%;
-        white-space: normal;
-    }
-    .bottom-left-text {
-        top: 63%;
-        left: 10%;
-        transform: none;
-        width: 80%;
-        white-space: normal;
-    }
- }
+            /* 移动端不要用固定px或vw，用相对图片缩放的方法 */
+            .top-text {
+                top: 8%; /* 保持这个百分比，如果跑偏请微调 */
+                left: 50%; /* 保持居中 */
+                transform: translateX(-50%) scale(0.65); /* 关键！移动端将文字缩小到 65% */
+                transform-origin: top center; /* 缩放锚点在上方中心 */
+                white-space: nowrap;
+            }
+            .bottom-left-text {
+                top: 63%;
+                left: 10%;
+                transform: scale(0.65); /* 左下角文字也缩小 */
+                transform-origin: top left;
+                white-space: nowrap;
+            }
+        }
 
 
         /* ===== 弹幕容器：铺满全屏、高密度 ===== */
